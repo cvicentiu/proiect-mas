@@ -1,6 +1,6 @@
-from world import *
 import Tkinter
 class Screen():
+  tick_count = 0
   def __init__(self, world, thinker):
     self.root = Tkinter.Tk()
     self.canvas = Tkinter.Canvas(self.root,
@@ -8,7 +8,6 @@ class Screen():
     self.canvas.pack()
     self.thinker = thinker
     self.world = world
-    self.tick_count = 0
     self.canvas.after(1, self.tick)
     self.root.mainloop()
 
@@ -17,6 +16,7 @@ class Screen():
       return
     self.thinker.think()
     self.canvas.delete('all')
+
     for food in self.world.food:
       food.paint(self.world, self.canvas)
     for obstacle in self.world.obstacles:
@@ -28,6 +28,7 @@ class Screen():
       agent.paint(self.world, self.canvas)
 
 
-    self.canvas.create_text(50, 10, text=str(self.tick_count))
-    self.tick_count = self.tick_count + 1
+
+    self.canvas.create_text(50, 10, text=str(Screen.tick_count))
+    Screen.tick_count = Screen.tick_count + 1
     self.canvas.after(1, self.tick)

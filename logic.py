@@ -6,7 +6,6 @@ class Logic(object):
     self.world = world
     self.tick = 0
     self.food_needed = len(self.world.food)
-    self.food_gathered = 0
     self.reactive_brains = []
     self.cognitive_brains = []
     self.all_brains = {}
@@ -22,7 +21,7 @@ class Logic(object):
       self.all_brains[agent] = brain
 
   def is_over(self):
-    if self.food_gathered == self.food_needed:
+    if self.world.base.food_stored == self.food_needed:
       return True
     return False
 

@@ -1,4 +1,5 @@
 import numpy as np
+from graphics import Screen
 from guid import GUID
 class WorldObject(object):
   objects = set()
@@ -87,7 +88,7 @@ class Food(WorldObject):
 
 
 class WorkerAgent(Agent):
-  CLOSE_RANGE_SENSOR_RADIUS = 10
+  CLOSE_RANGE_SENSOR_RADIUS = 15
   CLOSE_RANGE_SENSOR_COLOR = '#777777'
   def __init__(self, x, y):
     super(WorkerAgent, self).__init__(x, y)
@@ -114,6 +115,7 @@ class Base(WorldObject):
     super(Base, self).__init__()
     self.pos = [x, y]
     self.radius = Base.BASE_RADIUS
+    self.food_stored = 0
 
   def paint(self, world, canvas):
     canvas.create_oval(self.pos[0] - self.radius, self.pos[1] - self.radius,
@@ -121,20 +123,29 @@ class Base(WorldObject):
                        fill=Base.BASE_COLOR)
 
 class BreadCrumb(WorldObject):
-  BREADCRUMB_COLOR = '#669900'
+  BREADCRUMB_COLOR_DARK = '#669900'
+  BREADCRUMB_COLOR_LIGHT = 'yellow'
   BREADCRUMB_RADIUS = 1.5
   def __init__(self, x, y, count):
     super(BreadCrumb, self).__init__()
     self.pos = [x, y]
     self.count = count
     self.radius = BreadCrumb.BREADCRUMB_RADIUS
+    self.created = Screen.tick_count
 
   def paint(self, world, canvas):
+    if self.count == 2:
+      color = BreadCrumb.BREADCRUMB_COLOR_DARK
+    else:
+      color = BreadCrumb.BREADCRUMB_COLOR_LIGHT
+
     canvas.create_oval(self.pos[0] - self.radius,
                        self.pos[1] - self.radius,
                        self.pos[0] + self.radius,
                        self.pos[1] + self.radius,
-                       fill=BreadCrumb.BREADCRUMB_COLOR)
+                       fill=color)
+  def __repr__(self):
+    return str(self.pos)
 
 class Obstacle(WorldObject):
   def __init__(self, x, y, radius):

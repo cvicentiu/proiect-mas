@@ -2,11 +2,7 @@ import math
 class Collisions(object):
   @staticmethod
   def has_collided(pos_a, pos_b, r_a, r_b):
-    a_x = pos_a[0]
-    a_y = pos_a[1]
-    b_x = pos_b[0]
-    b_y = pos_b[1]
-    dist = math.sqrt((a_x - b_x) ** 2 + (a_y - b_y) ** 2)
+    dist = Collisions.distance(pos_a, pos_b)
     r_dist = r_a + r_b
     if dist < r_dist:
       return True
@@ -33,7 +29,7 @@ class Collisions(object):
 
     for obstacle in world.obstacles:
       if Collisions.has_collided(pos, obstacle.pos, radius, obstacle.radius):
-        collisions['obstacle'].append(obstacle)
+        collisions['obstacles'].append(obstacle)
 
     for crumb in world.crumbs:
       if Collisions.has_collided(pos, crumb.pos, radius, crumb.radius):
@@ -43,4 +39,14 @@ class Collisions(object):
       collisions['base'] = world.base
 
     return collisions
+
+  @staticmethod
+  def distance(pos_a, pos_b):
+    a_x = pos_a[0]
+    a_y = pos_a[1]
+    b_x = pos_b[0]
+    b_y = pos_b[1]
+    dist = math.sqrt((a_x - b_x) ** 2 + (a_y - b_y) ** 2)
+    return dist
+
 

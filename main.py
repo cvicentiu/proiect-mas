@@ -7,13 +7,13 @@ import random
 
 random.seed(42)
 
-NUM_REACTIVE_AGENTS = 30
+NUM_REACTIVE_AGENTS = 20
 
 NUM_FOOD_CLUSTERS = 10
 NUM_FOOD_UNITS_PER_CLUSTER = 20
 FOOD_CLUSTER_RADIUS = 10
 
-NUM_OBSTACLES = 20
+NUM_OBSTACLES = 10
 OBSTACLE_RADIUS_MIN=10
 OBSTACLE_RADIUS_MAX=20
 
@@ -23,8 +23,12 @@ WORLD_HEIGHT = 400
 BASE_X = 200
 BASE_Y = 200
 
-world = World(400, 400, 200, 200)
-world.agents.append(WorkerAgent(10, 30))
+world = World(WORLD_WIDTH, WORLD_HEIGHT, BASE_X, BASE_Y)
+
+for _ in range(NUM_REACTIVE_AGENTS):
+  c_x = random.randint(BASE_X + 20, BASE_X + 30)
+  c_y = random.randint(BASE_Y + 20, BASE_Y + 30)
+  world.agents.append(WorkerAgent(c_x, c_y))
 
 
 cluster = []
