@@ -17,8 +17,17 @@ class Screen():
       return
     self.thinker.think()
     self.canvas.delete('all')
-    for obj in WorldObject.objects:
-      obj.paint(self.world, self.canvas)
+    for food in self.world.food:
+      food.paint(self.world, self.canvas)
+    for obstacle in self.world.obstacles:
+      obstacle.paint(self.world, self.canvas)
+    for crumb in self.world.crumbs:
+      crumb.paint(self.world, self.canvas)
+    self.world.base.paint(self.world, self.canvas)
+    for agent in self.world.agents:
+      agent.paint(self.world, self.canvas)
+
+
     self.canvas.create_text(50, 10, text=str(self.tick_count))
     self.tick_count = self.tick_count + 1
     self.canvas.after(1, self.tick)
