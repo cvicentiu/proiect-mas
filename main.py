@@ -7,59 +7,96 @@ import random
 
 random.seed(42)
 
-NUM_REACTIVE_AGENTS = 20
+class WorldGenerator():
 
-NUM_FOOD_CLUSTERS = 10
-NUM_FOOD_UNITS_PER_CLUSTER = 20
-FOOD_CLUSTER_RADIUS = 10
+    WORLD_WIDTH  = 400
+    WORLD_HEIGHT = 400
 
-NUM_OBSTACLES = 10
-OBSTACLE_RADIUS_MIN=10
-OBSTACLE_RADIUS_MAX=20
+    BASE_X = 200
+    BASE_Y = 200
 
-WORLD_WIDTH = 400
-WORLD_HEIGHT = 400
+    NUM_REACTIVE_AGENTS = 10
+    NUM_COGNITIVE_AGENTS = 1
 
-BASE_X = 200
-BASE_Y = 200
+    NUM_FOOD_CLUSTERS          = 10
+    NUM_FOOD_UNITS_PER_CLUSTER = 20
+    FOOD_CLUSTER_RADIUS        = 10
 
-world = World(WORLD_WIDTH, WORLD_HEIGHT, BASE_X, BASE_Y)
+    NUM_OBSTACLES = 10
+    OBSTACLE_RADIUS_MIN = 10
+    OBSTACLE_RADIUS_MAX = 20
 
-for _ in range(NUM_REACTIVE_AGENTS):
-  c_x = random.randint(BASE_X + 20, BASE_X + 30)
-  c_y = random.randint(BASE_Y + 20, BASE_Y + 30)
-  world.agents.append(WorkerAgent(c_x, c_y))
+    @staticmethod
+    def generate_world(world_width=WORLD_WIDTH,
+                       world_height=WORLD_HEIGHT,
+                       base_x=BASE_X,
+                       base_y=BASE_Y,
+                       num_reactive_agents=NUM_REACTIVE_AGENTS,
+                       num_cognitive_agents=NUM_COGNITIVE_AGENTS,
+                       num_food_clusters=NUM_FOOD_CLUSTERS,
+                       num_food_units_per_cluster=NUM_FOOD_UNITS_PER_CLUSTER,
+                       food_cluster_radius=FOOD_CLUSTER_RADIUS,
+                       num_obstacles=NUM_OBSTACLES,
+                       obstacle_radius_min=OBSTACLE_RADIUS_MIN,
+                       obstacle_radius_max=OBSTACLE_RADIUS_MAX):
 
+        world = World(world_width, world_height, base_x, base_y)
 
-cluster = []
-for _ in range(NUM_FOOD_CLUSTERS):
-  c_x = random.randint(FOOD_CLUSTER_RADIUS, WORLD_WIDTH - FOOD_CLUSTER_RADIUS)
-  c_y = random.randint(FOOD_CLUSTER_RADIUS, WORLD_HEIGHT - FOOD_CLUSTER_RADIUS)
-  for _ in range(NUM_FOOD_UNITS_PER_CLUSTER):
-    f_x = random.randint(c_x - FOOD_CLUSTER_RADIUS, c_x + FOOD_CLUSTER_RADIUS)
-    f_y = random.randint(c_y - FOOD_CLUSTER_RADIUS, c_y + FOOD_CLUSTER_RADIUS)
-    world.food.append(Food(f_x, f_y))
+        # spawn agents
+        for _ in xrange(num_reactive_agents):
+            c_x = random.randint(base_x + 20, base_x + 30)
+            c_y = random.randint(base_y + 20, base_y + 30)
+            agent = WorkerAgent(c_x, c_y)
+            world.register_resource(agent, World.Agents)
 
-for _ in range(NUM_OBSTACLES):
-  o_x = random.randint(OBSTACLE_RADIUS_MAX, WORLD_WIDTH - OBSTACLE_RADIUS_MAX)
-  o_y = random.randint(OBSTACLE_RADIUS_MAX, WORLD_HEIGHT - OBSTACLE_RADIUS_MAX)
-  r_o = random.randint(OBSTACLE_RADIUS_MIN, OBSTACLE_RADIUS_MAX)
-  collision = False
-  for food in world.food:
-    if Collisions.has_collided(food.pos, [o_x, o_y], Food.FOOD_RADIUS, r_o):
-      collision = True
-      break
-  for obstacle in world.obstacles:
-    if Collisions.has_collided(obstacle.pos, [o_x, o_y], obstacle.radius, r_o):
-      collision = True
-      break
-  if Collisions.has_collided(world.base.pos, [o_x, o_y], Base.BASE_RADIUS, r_o):
-    collision = True
-
-  if not collision:
-    world.obstacles.append(Obstacle(o_x, o_y, r_o))
+        for _ in xrange(num_cognitive_agents):
+            c_x = random.randint(base_x + 20, base_x + 30)
+            c_y = random.randint(base_y + 20, base_y + 30)
+            agent = CarrierAgent(c_x, c_y)
+            world.register_resource(agent, World.Agents)
 
 
+        # spawn food clusters
+        for _ in range(num_food_clusters):
+            c_x = random.randint(food_cluster_radius, world_width - food_cluster_radius)
+            c_y = random.randint(food_cluster_radius, world_height - food_cluster_radius)
 
-thinker = Logic(world)
-Screen(world, thinker)
+            for _ in range(num_food_units_per_cluster):
+                f_x = random.randint(c_x - food_cluster_radius, c_x + food_cluster_radius)
+                f_y = random.randint(c_y - food_cluster_radius, c_y + food_cluster_radius)
+                food_unit = Food(f_x, f_y)
+                world.register_resource(food_unit, World.Food)
+
+        # spawn obstacles
+        for _ in range(num_obstacles):
+
+            o_x = random.randint(obstacle_radius_max, world_width - obstacle_radius_max)
+            o_y = random.randint(obstacle_radius_min, world_height - obstacle_radius_max)
+            r_o = random.randint(obstacle_radius_min, obstacle_radius_max)
+
+            obstacle  = Obstacle(o_x, o_y, r_o)
+            collision = False
+
+            for key in world.object_matrix:
+                resource = world.object_matrix[key]
+
+                if Collisions.check_collision(resource, obstacle):
+                    collision = True
+                    break
+
+            if not collision:
+                collision = Collisions.check_collision(world.base, obstacle)
+
+            if not collision:
+                world.register_resource(obstacle, World.Obstacles)
+
+        return world
+
+    @staticmethod
+    def random_test():
+        world = WorldGenerator.generate_world()
+        thinker = Logic(world)
+        Screen(world, thinker)
+
+
+WorldGenerator.random_test()

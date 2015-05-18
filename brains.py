@@ -19,14 +19,14 @@ class Brain(object):
     collisions = Collisions.get_collisions_radius(self.world,
                                                  self.agent.pos,
                                                  self.agent.sensed_radius)
-    collisions['agents'] = filter(lambda x : x != self.agent, collisions['agents'])
+    collisions['agents'] = filter(lambda x: x != self.agent, collisions['agents'])
     return collisions
 
   def get_collisions(self):
     collisions = Collisions.get_collisions_radius(self.world,
                                                   self.agent.pos,
                                                   self.agent.radius)
-    collisions['agents'] = filter(lambda x : x != self.agent, collisions['agents'])
+    collisions['agents'] = filter(lambda x: x != self.agent, collisions['agents'])
     return collisions
 
   def think(self):
@@ -71,7 +71,7 @@ class ReactiveBrain(Brain):
     agent = self.agent
     if agent.food_stored > 0:
       if self.last_dropped > ReactiveBrain.CRUMBS_DROP_INTERVAL:
-        self.world.crumbs.append(BreadCrumb(agent.pos[0], agent.pos[1], 2))
+        self.world.crumbs.add(BreadCrumb(agent.pos[0], agent.pos[1], 2))
         self.last_dropped = 0
 
 
@@ -92,12 +92,14 @@ class ReactiveBrain(Brain):
   def pick_up_food(self, collisions):
     agent = self.agent
     if len(collisions['food']) > 0:
+
       for food in collisions['food']:
-        if agent.food_stored < agent.capacity:
-          self.world.food.remove(food)
-          agent.food_stored += 1
-        else:
-          return True
+
+        max_quantity = min(food.quantity, agent.capacity - agent.food_stored)
+        agent.food_stored += max_quantity
+        if agent.food_stored == agent.capacity:
+            return True
+
     return False
 
 
@@ -167,6 +169,13 @@ class ReactiveBrain(Brain):
 
 
 class CognitiveBrain(Brain):
-  def __init__(self, agent, world):
-    self.agent = agent
-    self.world = world
+
+    def __init__(self, agent, world, search_agents, carrier_agents):
+
+        self.agent = agent
+        self.world = world
+
+        self.search_agents  = search_agents
+        self.carrier_agents = carrier_agents
+
+

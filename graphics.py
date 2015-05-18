@@ -1,5 +1,7 @@
 import Tkinter
+
 class Screen():
+
   tick_count = 0
   def __init__(self, world, thinker):
     self.root = Tkinter.Tk()
@@ -12,18 +14,24 @@ class Screen():
     self.root.mainloop()
 
   def tick(self):
+
     if self.thinker.is_over():
       return
+
     self.thinker.think()
     self.canvas.delete('all')
 
     for food in self.world.food:
       food.paint(self.world, self.canvas)
+
     for obstacle in self.world.obstacles:
       obstacle.paint(self.world, self.canvas)
+
     for crumb in self.world.crumbs:
       crumb.paint(self.world, self.canvas)
+
     self.world.base.paint(self.world, self.canvas)
+
     for agent in self.world.agents:
       agent.paint(self.world, self.canvas)
 
