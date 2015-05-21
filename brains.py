@@ -179,8 +179,9 @@ class EvolvedBrain(Brain):
     def __init__(self, agent, world):
 
         super(EvolvedBrain, self).__init__(agent, world)
-        self.targets = []
-        self.plan    = []
+        self.targets  = []
+        self.plan     = []
+        self.last_pos   = agent.pos
 
     def retrieve_collisions(self):
         collisions = Collisions.get_collisions(self.world, self.agent)
@@ -199,6 +200,7 @@ class EvolvedBrain(Brain):
         bot["rotation"]  = rotation
         bot["base_x"]    = base_pos[0]
         bot["base_y"]    = base_pos[1]
+        bot["last_theta"] = bot["theta"]
 
         return bot
 
@@ -215,6 +217,8 @@ class EvolvedBrain(Brain):
             print "theta dead, over"
             return False
 
+        bot["last_theta"] = bot["theta"]
+
         away   = float(bot["away_step"] * bot["theta"])
         around = bot["rotation"] * float(bot["theta"] + 1.0)
 
@@ -227,6 +231,8 @@ class EvolvedBrain(Brain):
     def apply_command(self, cmd):
 
         goal_type, goal_data = cmd
+
+        self.last_pos = self.agent.pos
 
         if goal_type == EvolvedBrain.ExploreGradient:
             self.set_direction(goal_data)
@@ -294,11 +300,18 @@ class CognitiveMonkey(EvolvedBrain):
         queue = deque()
         queue.append(item_pos)
 
+        if self.explore_map[item_pos[0]][item_pos[1]] != CognitiveMonkey.Unvisited and\
+           self.explore_map[item_pos[0]][item_pos[1]] != update_value:
+            return
+
         self.explore_map[item_pos[0]][item_pos[1]] = update_value
 
         while len(queue) > 0:
 
             px, py = queue.popleft()
+
+            if update_value == CognitiveMonkey.Obstacle:
+                pp((px, py))
 
             for dx, dy in CognitiveMonkey.Directions:
 
@@ -306,8 +319,12 @@ class CognitiveMonkey(EvolvedBrain):
                 if nx < 0 or ny < 0 or nx >= self.world.height or ny >= self.world.width:
                     continue
 
-                if self.explore_map[nx][ny] != CognitiveMonkey.Unvisited:
+                if self.explore_map[nx][ny] == update_value:
                     continue
+
+                if update_value == CognitiveMonkey.Empty:
+                    if self.explore_map[nx][ny] != CognitiveMonkey.Unvisited:
+                        continue
 
                 # a hypotetical collision between an agent on the neighbouring tile and the current item
                 if Collisions.has_collided((nx, ny), item_pos, self.agent.radius, item_radius):
@@ -327,7 +344,7 @@ class CognitiveMonkey(EvolvedBrain):
                 self.explore_map[pos[0]][pos[1]] = CognitiveMonkey.Food
 
         for obstacle in collisions[World.Obstacles]:
-            if self.explore_map[obstacle.pos] != -1:
+            if self.explore_map[obstacle.pos[0]][obstacle.pos[1]] != CognitiveMonkey.Obstacle:
                 self.mark_item_on_map(obstacle.pos, obstacle.radius, CognitiveMonkey.Obstacle)
 
 
@@ -337,6 +354,7 @@ class CognitiveMonkey(EvolvedBrain):
             Acquire knowledge about the environment from sensors
             and serving agents.
         """
+        # pp("Acquire Knowledge")
 
         for bot in self.search_agents:
             collisions = bot.retrieve_collisions()
@@ -361,11 +379,83 @@ class CognitiveMonkey(EvolvedBrain):
         if goal_type == EvolvedBrain.ExploreSpiral:
             data["plan"] = deque([(EvolvedBrain.ExploreSpiral, data)])
 
-        print "Exploration goal: ", data["plan"]
+        # print "Exploration goal: ", data["plan"]
+
+    def explore(self):
+
+        for bot in self.search_agents:
+            self.set_exploration_goals(bot)
+
+        for bot in self.carrier_agents:
+            self.set_exploration_goals(bot)
+
+
+    def check_out_of_bounds(self, pos):
+
+        px, py = pos
+        return px < 0 or py < 0 or \
+               px >= self.world.height or \
+               py >= self.world.width
+
+    def check_invalid_position(self, pos):
+        pos = map(int, pos)
+        px, py = pos
+        return self.explore_map[px][py] == CognitiveMonkey.Obstacle
+
+    def redirected_wall_bumper(self, bot):
+
+        pos = map(int, bot.agent.pos)
+
+        pp(pos)
+        pp(self.explore_map[pos[0]][pos[1]])
+
+        if not (self.check_out_of_bounds(pos) or self.check_invalid_position(pos)):
+            return
+
+        # out_of_bounds -> go to a random direction
+
+        # was spiraling -> compute the next "safe" position
+        #               -> set it as target
+
+        bot_info = self.bot_db[bot]
+        goal_type, goal_data = bot_info["targets"][0]
+
+        if self.check_out_of_bounds(pos):
+            # TODO
+            # select random target
+            return
+
+        if goal_type == EvolvedBrain.ExploreSpiral:
+
+            while not self.check_out_of_bounds(pos) and self.check_invalid_position(pos):
+                pos = map(int, self.spiral_exploration(bot_info))
+
+            if self.check_out_of_bounds(pos):
+                # TODO
+                # select random target
+                return
+
+            goal = (CognitiveMonkey.ExploreGradient, pos)
+            bot_info["targets"].appendleft(goal)
+
+            pp("Spiral on the other end")
+            print self.explore_map[pos[0]][pos[1]]
+            pp(bot_info["targets"])
+            exit(0)
+
+        bot.agent.pos = bot.last_pos
+
+    def bumped_walls(self):
+
+        for bot in self.search_agents:
+            self.redirected_wall_bumper(bot)
+
+        for bot in self.carrier_agents:
+            self.redirected_wall_bumper(bot)
 
     def assign_command(self):
 
-        pp("assign command")
+        # pp("assign command")
 
         for bot in self.bot_db:
             cmd = self.bot_db[bot]["plan"]
@@ -375,20 +465,13 @@ class CognitiveMonkey(EvolvedBrain):
 
     def compute_master_plan(self):
 
-        pp("Acquire Knowledge")
         self.acquire_knowledge()
+        self.bumped_walls()
 
         if len(self.free_resources):
-            # hunt for food
-            # pp("Food!")
             pass
 
-        for bot in self.search_agents:
-            self.set_exploration_goals(bot)
-
-        for bot in self.carrier_agents:
-            self.set_exploration_goals(bot)
-
+        self.explore()
         self.assign_command()
 
     def think(self):

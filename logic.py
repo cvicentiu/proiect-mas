@@ -77,10 +77,10 @@ class AugumentedLogic(Logic):
 
         self.tick += 1
 
-        pp("Compute master plan!")
+        # pp("Compute master plan!")
         self.maestro.compute_master_plan()
 
-        pp("Think, bot, think!")
+        # pp("Think, bot, think!")
         for bot in self.all_brains:
             bot.think()
 

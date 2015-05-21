@@ -66,9 +66,9 @@ class WorldGenerator():
                 f_x = random.randint(c_x - food_cluster_radius, c_x + food_cluster_radius)
                 f_y = random.randint(c_y - food_cluster_radius, c_y + food_cluster_radius)
 
-                while f_x < 0 or f_y < 0 or f_x >= world_height or f_y >= world_height:
-                    f_x = random.randint(c_x - food_cluster_radius, c_x + food_cluster_radius)
-                    f_y = random.randint(c_y - food_cluster_radius, c_y + food_cluster_radius)
+                # while f_x < 0 or f_y < 0 or f_x >= world_height or f_y >= world_height:
+                #     f_x = random.randint(c_x - food_cluster_radius, c_x + food_cluster_radius)
+                #     f_y = random.randint(c_y - food_cluster_radius, c_y + food_cluster_radius)
 
                 food_unit = Food(f_x, f_y)
                 world.register_resource(food_unit, World.Food)
