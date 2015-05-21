@@ -11,17 +11,18 @@ class Logic(object):
         self.food_needed = len(self.world.food)
         self.reactive_brains = []
         self.cognitive_brains = []
-        self.all_brains = {}
+        self.all_brains = set()
+
+        self.spawn_agents(world)
+
+    def spawn_agents(self, world):
+
+        print "spawn dummy"
 
         for agent in self.world.agents:
             if isinstance(agent, WorkerAgent):
-                AI = ReactiveBrain(agent, world)
-                self.reactive_brains.append(AI)
-            else:
-                AI = CognitiveBrain(agent, world,
-                                    self.reactive_brains,
-                                    self.cognitive_brains)
-                self.cognitive_brains.append(AI)
+                ai = ReactiveBrain(agent, world)
+                self.reactive_brains.append(ai)
 
     def is_over(self):
         return self.world.base.food_stored == self.food_needed
@@ -29,9 +30,6 @@ class Logic(object):
     def think(self):
 
         self.tick += 1
-
-        for carrier_agent in self.cognitive_brains:
-            carrier_agent.think()
 
         for search_agent in self.reactive_brains:
             search_agent.think()
@@ -45,25 +43,49 @@ class Logic(object):
         for agent in self.world.agents:
           agent.execute_tick()
 
-    def mainLoop(self):
+
+class AugumentedLogic(Logic):
+
+    def __init__(self, world):
+        super(AugumentedLogic, self).__init__(world)
+
+        if len(self.cognitive_brains) == 0:
+            print "Augumented logic framework requires at least one intelligent agent."
+            exit(1)
+
+        self.maestro = self.cognitive_brains[0]
+
+    def spawn_agents(self, world):
+
+        for agent in self.world.agents:
+
+            if isinstance(agent, WorkerAgent):
+                ai = ReactiveMonkey(agent, world)
+                self.reactive_brains.append(ai)
+            else:
+                ai = CognitiveMonkey(agent, world,
+                                     self.reactive_brains,
+                                     self.cognitive_brains)
+                self.cognitive_brains.append(ai)
+
+            self.all_brains.add(ai)
+
+        for agent in self.cognitive_brains:
+            agent.setup()
+
+    def think(self):
 
         self.tick += 1
 
-        for carrier_agent in self.cognitive_brains:
-            carrier_agent.think()
+        pp("Compute master plan!")
+        self.maestro.compute_master_plan()
 
-        for search_agent in self.reactive_brains:
-            search_agent.think()
+        pp("Think, bot, think!")
+        for bot in self.all_brains:
+            bot.think()
 
-        # move agents
         for agent in self.world.agents:
             agent.execute_tick()
-
-
-
-
-
-
 
 
 

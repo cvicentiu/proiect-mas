@@ -1,5 +1,5 @@
 from graphics import Screen
-from logic import Logic
+from logic import Logic, AugumentedLogic
 from collisions import Collisions
 from world import *
 from Tkinter import *
@@ -38,7 +38,8 @@ class WorldGenerator():
                        food_cluster_radius=FOOD_CLUSTER_RADIUS,
                        num_obstacles=NUM_OBSTACLES,
                        obstacle_radius_min=OBSTACLE_RADIUS_MIN,
-                       obstacle_radius_max=OBSTACLE_RADIUS_MAX):
+                       obstacle_radius_max=OBSTACLE_RADIUS_MAX,
+                       reactive_agent=WorkerAgent):
 
         world = World(world_width, world_height, base_x, base_y)
 
@@ -46,7 +47,7 @@ class WorldGenerator():
         for _ in xrange(num_reactive_agents):
             c_x = random.randint(base_x + 20, base_x + 30)
             c_y = random.randint(base_y + 20, base_y + 30)
-            agent = WorkerAgent(c_x, c_y)
+            agent = reactive_agent(c_x, c_y)
             world.register_resource(agent, World.Agents)
 
         for _ in xrange(num_cognitive_agents):
@@ -64,6 +65,11 @@ class WorldGenerator():
             for _ in range(num_food_units_per_cluster):
                 f_x = random.randint(c_x - food_cluster_radius, c_x + food_cluster_radius)
                 f_y = random.randint(c_y - food_cluster_radius, c_y + food_cluster_radius)
+
+                while f_x < 0 or f_y < 0 or f_x >= world_height or f_y >= world_height:
+                    f_x = random.randint(c_x - food_cluster_radius, c_x + food_cluster_radius)
+                    f_y = random.randint(c_y - food_cluster_radius, c_y + food_cluster_radius)
+
                 food_unit = Food(f_x, f_y)
                 world.register_resource(food_unit, World.Food)
 
@@ -78,14 +84,12 @@ class WorldGenerator():
             collision = False
 
             for key in world.object_matrix:
+
                 resource = world.object_matrix[key]
 
                 if Collisions.check_collision(resource, obstacle):
                     collision = True
                     break
-
-            if not collision:
-                collision = Collisions.check_collision(world.base, obstacle)
 
             if not collision:
                 world.register_resource(obstacle, World.Obstacles)
@@ -94,9 +98,16 @@ class WorldGenerator():
 
     @staticmethod
     def random_test():
-        world = WorldGenerator.generate_world()
+        world = WorldGenerator.generate_world(num_cognitive_agents=0)
         thinker = Logic(world)
         Screen(world, thinker)
 
+    @staticmethod
+    def cognitive_test_0():
+        world = WorldGenerator.generate_world(num_cognitive_agents=1, num_reactive_agents=0)
+        thinker = AugumentedLogic(world)
+        Screen(world, thinker)
 
-WorldGenerator.random_test()
+
+
+WorldGenerator.cognitive_test_0()
