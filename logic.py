@@ -84,8 +84,8 @@ class AugumentedLogic(Logic):
         for bot in self.all_brains:
             bot.think()
 
-        for agent in self.world.agents:
-            agent.execute_tick()
+        # for agent in self.world.agents:
+        #     agent.execute_tick()
 
 
 

@@ -74,6 +74,14 @@ class Collisions(object):
 
     @staticmethod
     def set_direction_to_goal(pos, goal):
-        forward = np.subtract(pos, goal)
-        forward = forward / np.linalg.norm(forward)
+        forward = np.subtract(goal, pos)
+        norm = np.linalg.norm(forward)
+
+        # if norm > 0:
+        #     forward = forward / norm
+
+        # forward = forward / np.linalg.norm(forward)
+        # norm = np.linalg.norm(new_f)
+        # if (norm > 0):
+          # agent.forward = new_f / norm
         return forward
