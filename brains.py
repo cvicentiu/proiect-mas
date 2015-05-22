@@ -288,16 +288,27 @@ class CognitiveMonkey(EvolvedBrain):
     def setup(self):
         self.setup_bots(self.search_agents)
         self.setup_bots(self.carrier_agents)
+        self.setup_coll()
 
     def setup_bots(self, bots):
 
+        rotation   = 1.0
+        radius     = 45
+        radius_inc = 5
+
         for bot in bots:
             self.bot_db[bot] = {"targets": deque(), "plan": deque()}
-            EvolvedBrain.setup_spiral(self.bot_db[bot], self.base.pos)
+            EvolvedBrain.setup_spiral(self.bot_db[bot], self.base.pos, rotation=rotation, radius=radius)
+
+            rotation *= -1.0
+            if rotation == 1.0:
+                radius += radius_inc
+                if radius == 80 or radius == 20:
+                    radius_inc = -radius_inc
 
     def setup_coll(self):
 
-        for obstacle in self.world.collisions:
+        for obstacle in self.world.obstacles:
             self.mark_item_on_map(obstacle.pos, obstacle.radius, CognitiveMonkey.Obstacle)
 
     def mark_item_on_map(self, item_pos, item_radius, update_value):
@@ -335,7 +346,7 @@ class CognitiveMonkey(EvolvedBrain):
                     self.explore_map[nx][ny] = update_value
                     queue.append((nx, ny))
 
-    def compute_path(self, orig, goal, sfun=None):
+    def compute_path(self, orig, goal):
 
         goal = tuple(goal)
         queue = SortedCollection(key=itemgetter(0))
@@ -349,7 +360,7 @@ class CognitiveMonkey(EvolvedBrain):
             score, (px, py), steps = queue[0]
             queue.remove_first()
 
-            if (px, py) == goal or (sfun and sfun(px, py)):
+            if (px, py) == goal:
 
                 # follow trail back greedily
                 pos  = (px, py)
@@ -389,14 +400,18 @@ class CognitiveMonkey(EvolvedBrain):
         pred = {}
         pred[orig] = None
 
+        available = []
+
         while len(queue) > 0:
             (px, py) = queue.popleft()
 
             if self.explore_map[px][py] == CognitiveMonkey.Unvisited:
 
                 pos  = (px, py)
-                plan = [pos]
+                # available.append(pos)
+                # continue
 
+                plan = [pos]
                 while pred[pos]:
                     plan.append(pred[pos])
                     pos = pred[pos]
@@ -419,7 +434,35 @@ class CognitiveMonkey(EvolvedBrain):
                 pred[(nx, ny)] = (px, py)
                 queue.append((nx, ny))
 
-        return None
+        # available = []
+        # for i in xrange(len(self.explore_map)):
+        #     for j in xrange(len(self.explore_map[i])):
+        #             if self.explore_map[i][j] == CognitiveMonkey.Unvisited:
+        #                 available.append((i, j))
+        if len(available) == 0:
+            return None
+
+        pos = random.choice(available)
+        plan = [pos]
+        while pred[pos]:
+            plan.append(pred[pos])
+            pos = pred[pos]
+
+        plan = [(CognitiveMonkey.ExploreGradient, pos) for pos in plan[::-1][1:]]
+        return (CognitiveMonkey.ExploreGradient, pos), plan
+
+        # plan = self.compute_path(orig, dest)
+        # print "Found something!", dest, plan
+        # if len(plan) == 0:
+        #     return None
+        # for dx, dy in CognitiveMonkey.Directions:
+        #     nx, ny = orig[0] + dx, orig[1] + dy
+        #     print self.explore_map[nx][ny]
+        #
+        # for x, y in plan:
+        #     print (x, y), self.explore_map[x][y]
+        # exit(0)
+        # return (CognitiveMonkey.ExploreGradient, dest), plan
 
     def update_map(self, agent, collisions):
 
@@ -456,16 +499,28 @@ class CognitiveMonkey(EvolvedBrain):
             collisions = bot.retrieve_collisions()
             self.update_map(bot.agent, collisions)
 
+        self.check_map_explored()
+
+    def check_map_explored(self):
+
+        for line in self.explore_map:
+            for item in line:
+                if item == CognitiveMonkey.Unvisited:
+                    return
+
+        print "Map succesfully explored!"
+        exit(0)
 
     def set_random_strategy(self, bot):
 
-        pp("RANDOM STRATEGY")
+        # pp("RANDOM STRATEGY")
         pos    = tuple(map(int, bot.agent.pos))
         data   = self.bot_db[bot]
         result = self.seek_available_tile(pos)
 
         if not result:
             pp("No tile left to explore!!")
+            exit(0)
         else:
             target, plan = result
             data["targets"] = deque([target])
@@ -495,7 +550,7 @@ class CognitiveMonkey(EvolvedBrain):
 
             if pos == goal_data:
 
-                print "Remove exploration target !!"
+                # print "Remove exploration target !!"
                 data["targets"].popleft()
 
                 if len(data["targets"]) == 0:
@@ -504,7 +559,7 @@ class CognitiveMonkey(EvolvedBrain):
                     goal_type, goal_data = data["targets"][0]
                     if goal_type == EvolvedBrain.ExploreSpiral:
                         data["plan"] = deque([(EvolvedBrain.ExploreSpiral, data)])
-                        print "SPIRAL BACK"
+                        # print "SPIRAL BACK"
                     else:
                         print "AOE"
                         print goal_type
@@ -521,8 +576,8 @@ class CognitiveMonkey(EvolvedBrain):
                     data["plan"]    = deque(plan)
                     # data["targets"].appendleft((EvolvedBrain.ExploreGradient, plan[-1]))
 
-                    pp("Exploration plan is public.")
-                    pp(map(int, bot.agent.pos))
+                    # pp("Exploration plan is public.")
+                    # pp(map(int, bot.agent.pos))
                     # for item in data["plan"]:
                     #     _, pos = item
                     #     print pos, self.explore_map[pos[0]][pos[1]]
@@ -551,8 +606,14 @@ class CognitiveMonkey(EvolvedBrain):
 
         pos = map(int, bot.agent.pos)
 
+        # print
+        # print pos, self.explore_map[pos[0]][pos[1]]
+
         if not (self.check_out_of_bounds(pos) or self.check_invalid_position(pos)):
             return
+
+        # print
+        # print "NASPA POZ ", pos
 
         # out_of_bounds -> go to a random direction
 
@@ -574,22 +635,26 @@ class CognitiveMonkey(EvolvedBrain):
                 self.set_random_strategy(bot)
                 return
 
-            print "INVALID ", goal_type, self.explore_map[pos[0]][pos[1]], pos
-            pp("Spiral on the other end")
+            # print "INVALID ", goal_type, self.explore_map[pos[0]][pos[1]], pos
+            # pp("Spiral on the other end")
 
             goal = (CognitiveMonkey.ExploreGradient, pos)
             bot_info["targets"].appendleft(goal)
             bot_info["plan"] = deque([]) # Trigger a plan computation
-            print "EMPTY !!!!"
+            # print "EMPTY !!!!"
 
-            pp(bot_info["targets"])
+            last_pos = bot.last_pos
+            # pp(last_pos)
+            # pp(self.explore_map[last_pos[0]][last_pos[1]])
+            # print "JUMP TO ", bot_info["targets"]
 
         if goal_type == EvolvedBrain.ExploreGradient:
             print "INVALID ", goal_type, self.explore_map[pos[0]][pos[1]], pos
             print "@@@ EMPTY !!!!"
-
-            bot_info["plan"] = deque([]) # Trigger a change in the plan
-            exit(0)
+            bot.agent.pos = bot.last_pos
+            self.set_random_strategy(bot)
+            # bot_info["plan"] = deque([]) # Trigger a change in the plan
+            # exit(0)
 
         bot.agent.pos = bot.last_pos
 

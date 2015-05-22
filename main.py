@@ -104,7 +104,7 @@ class WorldGenerator():
 
     @staticmethod
     def cognitive_test_0():
-        world = WorldGenerator.generate_world(num_cognitive_agents=1, num_reactive_agents=0)
+        world = WorldGenerator.generate_world(num_cognitive_agents=10, num_reactive_agents=0)
         thinker = AugumentedLogic(world)
         Screen(world, thinker)
 

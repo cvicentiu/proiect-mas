@@ -54,6 +54,7 @@ class AugumentedLogic(Logic):
             exit(1)
 
         self.maestro = self.cognitive_brains[0]
+        self.maestro.setup()
 
     def spawn_agents(self, world):
 
@@ -69,9 +70,6 @@ class AugumentedLogic(Logic):
                 self.cognitive_brains.append(ai)
 
             self.all_brains.add(ai)
-
-        for agent in self.cognitive_brains:
-            agent.setup()
 
     def think(self):
 
