@@ -43,20 +43,6 @@ class WorldGenerator():
 
         world = World(world_width, world_height, base_x, base_y)
 
-        # spawn agents
-        for _ in xrange(num_reactive_agents):
-            c_x = random.randint(base_x + 20, base_x + 30)
-            c_y = random.randint(base_y + 20, base_y + 30)
-            agent = reactive_agent(c_x, c_y)
-            world.register_resource(agent, World.Agents)
-
-        for _ in xrange(num_cognitive_agents):
-            c_x = random.randint(base_x + 20, base_x + 30)
-            c_y = random.randint(base_y + 20, base_y + 30)
-            agent = CarrierAgent(c_x, c_y)
-            world.register_resource(agent, World.Agents)
-
-
         # spawn food clusters
         for _ in range(num_food_clusters):
             c_x = random.randint(food_cluster_radius, world_width - food_cluster_radius)
@@ -94,6 +80,19 @@ class WorldGenerator():
             if not collision:
                 world.register_resource(obstacle, World.Obstacles)
 
+        # spawn agents
+        for _ in xrange(num_reactive_agents):
+            c_x = random.randint(base_x + 20, base_x + 30)
+            c_y = random.randint(base_y + 20, base_y + 30)
+            agent = reactive_agent(c_x, c_y)
+            world.register_resource(agent, World.Agents)
+
+        for _ in xrange(num_cognitive_agents):
+            c_x = random.randint(base_x + 20, base_x + 30)
+            c_y = random.randint(base_y + 20, base_y + 30)
+            agent = CarrierAgent(c_x, c_y)
+            world.register_resource(agent, World.Agents)
+
         return world
 
     @staticmethod
@@ -104,7 +103,7 @@ class WorldGenerator():
 
     @staticmethod
     def cognitive_test_0():
-        world = WorldGenerator.generate_world(num_cognitive_agents=1, num_reactive_agents=10)
+        world = WorldGenerator.generate_world(num_cognitive_agents=5, num_reactive_agents=5)
         thinker = AugumentedLogic(world)
         Screen(world, thinker)
 

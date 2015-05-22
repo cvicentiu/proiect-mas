@@ -7,6 +7,7 @@ from collections import deque
 from sorted_collection import SortedCollection
 from operator import itemgetter
 import math
+import itertools
 
 class Message(object):
   def __init__(self, sender, receiver, msg):
@@ -174,7 +175,7 @@ class ReactiveBrain(Brain):
 
 class EvolvedBrain(Brain):
 
-    ExploreGradient, ExploreSpiral, GatherResource, ReturnToBase = range(0, 4)
+    ExploreGradient, ExploreSpiral, GatherResource, ReturnToBase, MeetUp = range(0, 5)
 
     def __init__(self, agent, world):
 
@@ -282,7 +283,7 @@ class ReactiveMonkey(EvolvedBrain):
 
 class CognitiveMonkey(EvolvedBrain):
 
-    Unvisited, Empty, Obstacle, Food = range(0, 4)
+    Unvisited, Empty, Obstacle, Food, Misc1, Misc2 = range(0, 6)
 
     Directions = zip((0, 0, 1, -1, 1, -1, -1, 1),
                      (1, -1, 0, 0, 1, 1, -1, -1))
@@ -313,7 +314,7 @@ class CognitiveMonkey(EvolvedBrain):
 
         rotation   = 1.0
         radius     = 45
-        radius_inc = 5
+        radius_inc = 10
 
         for bot in bots:
             self.bot_db[bot] = {"targets": deque(), "plan": deque()}
@@ -325,7 +326,7 @@ class CognitiveMonkey(EvolvedBrain):
             rotation *= -1.0
             if rotation == 1.0:
                 radius += radius_inc
-                if radius == 80 or radius == 20:
+                if radius == 120 or radius == 30:
                     radius_inc = -radius_inc
 
     def setup_coll(self):
@@ -415,6 +416,100 @@ class CognitiveMonkey(EvolvedBrain):
                 queue.insert((nscore, (nx, ny), steps + 1))
 
         return []
+
+    def bot_finds_love(self, bot1, bot2):
+
+        """
+            Seek a path to join the two bots.
+            (Usage: search bot sending resources to a carrier bot)
+            :param bot1:
+            :param bot2:
+            :return:
+        """
+
+        aux_map = np.array(self.explore_map, copy=True)
+
+        pos1 = tuple(map(int, bot1.agent.pos))
+        pos2 = tuple(map(int, bot2.agent.pos))
+
+        pred = {}
+        pred[pos1] = None
+        pred[pos2] = None
+
+        if pos1 == pos2:
+            return pos1, pos2
+
+        queue_1 = deque([pos1])
+        queue_2 = deque([pos2])
+
+        # print pos1, pos2
+
+        aux_map[pos1[0]][pos1[1]] = CognitiveMonkey.Misc1
+        aux_map[pos2[0]][pos2[1]] = CognitiveMonkey.Misc2
+
+        step = 1
+
+        while len(queue_1) > 0 and len(queue_2) > 0:
+
+            if step:
+                if len(queue_1) == 0:
+                    continue
+
+                (px, py)     = queue_1.popleft()
+                colour       = CognitiveMonkey.Misc1
+                other_colour = CognitiveMonkey.Misc2
+            else:
+                if len(queue_2) == 0:
+                    continue
+
+                (px, py)     = queue_2.popleft()
+                colour       = CognitiveMonkey.Misc2
+                other_colour = CognitiveMonkey.Misc1
+
+            for dx, dy in CognitiveMonkey.Directions:
+                nx, ny = px + dx, py + dy
+
+                if nx < 0 or ny < 0 or nx >= self.world.height or ny >= self.world.width:
+                    continue
+
+                if aux_map[nx][ny] == CognitiveMonkey.Obstacle or \
+                   aux_map[nx][ny] == colour:
+                    continue
+
+                if aux_map[nx][ny] == other_colour:
+
+                    # pos = (px, py)
+                    # path_current = [pos]
+                    # while pred[pos]:
+                    #     path_current.append(pred[pos])
+                    #     pos = pred[pos]
+                    # path_current = path_current[::-1][1:]
+                    #
+                    # pos = (nx, ny)
+                    # path_other = [pos]
+                    # while pred[pos]:
+                    #     path_other.append(pred[pos])
+                    #     pos = pred[pos]
+                    # path_other = path_other[::-1][1:]
+
+                    if step:
+                        return (px, py), (nx, ny)
+                        # return path_current, path_other
+                    else:
+                        return (nx, ny), (px, py)
+                        # return path_other, path_current
+
+                aux_map[nx][ny] = colour
+                pred[(nx, ny)] = (px, py)
+
+                if step:
+                    queue_1.append((nx, ny))
+                else:
+                    queue_2.append((nx, ny))
+
+            step = 1 - step # switch colours
+
+        return None
 
     def seek_available_tile(self, orig):
 
@@ -553,7 +648,7 @@ class CognitiveMonkey(EvolvedBrain):
 
         if not result:
             pp("No tile left to explore!!")
-            exit(0)
+            # exit(0)
         else:
             target, plan = result
             data["targets"] = deque([target])
@@ -782,11 +877,50 @@ class CognitiveMonkey(EvolvedBrain):
                         if goal_type == CognitiveMonkey.ReturnToBase:
                             # print "Plan for returning to the base."
                             # TODO: seek closest carrier as well
-                            plan = self.compute_path(bot.agent.pos, self.world.base.pos)
-                            data["plan"] = deque([(CognitiveMonkey.ExploreGradient, pos) for pos in plan])
 
-                            info = {"amount": data["food_stored"], "target": self.world.base}
-                            data["plan"].append((CognitiveMonkey.ReturnToBase, info))
+                            distance_to_carrier = Collisions.distance(bot.agent.pos, self.world.base.pos)
+                            carrier = self.world.base
+
+                            for other in self.carrier_agents:
+
+                                targets = self.bot_db[other]["targets"]
+
+                                # check if the carrier is already engaged
+                                if len(targets) > 0 and targets[0][0] == CognitiveMonkey.MeetUp:
+                                    continue
+
+                                distance = Collisions.distance(bot.agent.pos, other.agent.pos)
+
+                                if distance < distance_to_carrier:
+                                    distance_to_carrier = distance
+                                    carrier = other
+
+                            if carrier != self.world.base:
+                                target_bot, target_carrier = self.bot_finds_love(bot, carrier)
+
+                                targets_carrier = self.bot_db[carrier]["targets"]
+
+                                if len(targets_carrier) > 0:
+
+                                    t = targets_carrier[0]
+                                    pos_carrier = tuple(map(int, carrier.agent.pos))
+                                    if t[0] == CognitiveMonkey.ExploreSpiral:
+                                        targets_carrier.appendleft((CognitiveMonkey.ExploreGradient, pos_carrier))
+
+                                    targets_carrier.appendleft((CognitiveMonkey.ExploreGradient, target_carrier))
+                                    self.bot_db[carrier]["plan"] = deque([])
+
+                                    plan = self.compute_path(bot.agent.pos, target_bot)
+                                    data["plan"] = deque([(CognitiveMonkey.ExploreGradient, pos) for pos in plan])
+                                    info = {"amount": data["food_stored"], "target": carrier.agent}
+                                    data["plan"].append((CognitiveMonkey.ReturnToBase, info))
+                                    # print "MeetUp"
+
+                            else:
+                                plan = self.compute_path(bot.agent.pos, self.world.base.pos)
+                                data["plan"] = deque([(CognitiveMonkey.ExploreGradient, pos) for pos in plan])
+                                info = {"amount": data["food_stored"], "target": self.world.base}
+                                data["plan"].append((CognitiveMonkey.ReturnToBase, info))
 
             elif goal_type == CognitiveMonkey.ReturnToBase:
                 if len(data["plan"]) == 0:
@@ -835,11 +969,30 @@ class CognitiveMonkey(EvolvedBrain):
 
                 # TODO: sort food by distance
                 if goal_type == CognitiveMonkey.GatherResource:
+
                     if len(data["plan"]) == 0:
+
+                        items = []
+                        # attempting an optimum plan
+
+                        items = [item for item in targets if item[0] == CognitiveMonkey.GatherResource]
+
+                        # if len(items) > 1:
+                        #     pos = bot.agent.pos
+                        #     items = sorted(items, key=lambda (_, v): -Collisions.distance(pos, v["pos"]))
+                        #     slice = list(itertools.islice(targets, len(items), len(targets)))
+                        #     items += slice
+                        #     data["targets"] = deque(items)
+                            # print "sorted"
+
+                        goal_type, goal_data = data["targets"][0]
+
                         # print "Made a new plan!"
                         plan = self.compute_path(bot.agent.pos, goal_data["pos"])
                         data["plan"] = deque([(CognitiveMonkey.ExploreGradient, pos) for pos in plan])
                         data["plan"].append((CognitiveMonkey.GatherResource, goal_data))
+
+                        # print data["plan"]
 
             # print "Targets", self.bot_db[bot]["targets"]
             # print "Plan", self.bot_db[bot]["plan"]

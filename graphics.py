@@ -17,7 +17,7 @@ class Screen():
 
     if self.thinker.is_over():
         print "All resources have been depleted", self.thinker.tick
-        return
+        exit(0)
 
     self.thinker.think()
     self.canvas.delete('all')
