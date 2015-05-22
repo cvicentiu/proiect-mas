@@ -71,6 +71,9 @@ class AugumentedLogic(Logic):
 
             self.all_brains.add(ai)
 
+    def is_over(self):
+        return self.maestro.world.total_resources == 0
+
     def think(self):
 
         self.tick += 1

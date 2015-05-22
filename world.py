@@ -92,9 +92,12 @@ class Food(WorldObject):
     def __init__(self, x, y):
         super(Food, self).__init__((x, y), Food.FOOD_COLOR, Food.FOOD_RADIUS)
         self.quantity = 1
+        self.invisible = False
 
     def paint(self, world, canvas):
-        self.paint_own_sphere(canvas)
+
+        if not self.invisible:
+            self.paint_own_sphere(canvas)
 
 
 class WorkerAgent(Agent):
@@ -129,16 +132,16 @@ class CarrierAgent(Agent):
     CLOSE_RANGE_SENSOR_COLOR = '#777777'
 
     def __init__(self, x, y):
-        super(CarrierAgent, self).__init__(x, y, 'orange')
+        super(CarrierAgent, self).__init__(x, y, 'orange red')
         self.sensed_radius = WorkerAgent.CLOSE_RANGE_SENSOR_RADIUS
-
+        self.capacity      = 9999
 
     def paint(self, world, canvas):
 
         if self.food_stored == 0:
-            self.color = 'orange'
-        elif self.food_stored > 0:
             self.color = 'orange red'
+        elif self.food_stored > 0:
+            self.color = 'red'
 
         super(CarrierAgent, self).paint(world, canvas)
         canvas.create_oval(self.pos[0] - self.sensed_radius,
@@ -238,6 +241,8 @@ class World(object):
         self.tiles_explored = 0
         self.tile_count     = width * height
 
+        self.total_resources = 0
+
     def check_location_available(self, pos):
         if pos in self.object_matrix:
             return False
@@ -248,6 +253,9 @@ class World(object):
         if type == World.Agents:
             self.object_type_matrix[type].append(resource)
             return
+
+        if type == World.Food:
+            self.total_resources += 1
 
         if type == World.Food and resource.pos in self.object_matrix:
             self.object_matrix[resource.pos].quantity += 1
