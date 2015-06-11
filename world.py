@@ -125,7 +125,6 @@ class WorkerAgent(Agent):
                            self.pos[0] + self.sensed_radius,
                            self.pos[1] + self.sensed_radius)
 
-
 class CarrierAgent(Agent):
 
     CLOSE_RANGE_SENSOR_RADIUS = 15

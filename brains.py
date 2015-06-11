@@ -25,8 +25,9 @@ class Brain(object):
 
   def get_sensed(self):
     collisions = Collisions.get_collisions_radius(self.world,
-                                                 self.agent.pos,
-                                                 self.agent.sensed_radius)
+                                                  self.agent.pos,
+                                                  self.agent.sensed_radius)
+
     collisions['agents'] = filter(lambda x: x != self.agent, collisions['agents'])
     return collisions
 
@@ -79,7 +80,7 @@ class ReactiveBrain(Brain):
     agent = self.agent
     if agent.food_stored > 0:
       if self.last_dropped > ReactiveBrain.CRUMBS_DROP_INTERVAL:
-        self.world.crumbs.add(BreadCrumb(agent.pos[0], agent.pos[1], 2))
+        self.world.crumbs.append(BreadCrumb(agent.pos[0], agent.pos[1], 2))
         self.last_dropped = 0
 
 
@@ -103,10 +104,19 @@ class ReactiveBrain(Brain):
     if len(collisions['food']) > 0:
         for food in collisions['food']:
             max_quantity = min(food.quantity, agent.capacity - agent.food_stored)
+            if max_quantity == 0:
+                continue
+
             agent.food_stored += max_quantity
+            food.quantity     -= max_quantity
+
+            if food.quantity == 0:
+                food.invisible = True
+
             if agent.food_stored == agent.capacity:
                 return True
-    return False
+
+    return agent.food_stored > 0
 
 
   def think(self):
@@ -149,8 +159,9 @@ class ReactiveBrain(Brain):
     if agent.food_stored < agent.capacity:
       # We change direction straight to food, if we sense it.
       if len(sensed['food']) > 0:
-        self.set_direction_to(sensed['food'][0].pos)
-
+        for food in sensed["food"]:
+            if food.quantity > 0:
+                self.set_direction_to(food.pos)
 
     if collisions['base'] != None:
       self.set_direction_to(self.world.base.pos)
@@ -239,7 +250,6 @@ class EvolvedBrain(Brain):
 
         if goal_type == EvolvedBrain.ExploreGradient:
             self.agent.pos = goal_data
-            # self.set_direction(goal_data)
 
         elif goal_type == EvolvedBrain.ExploreSpiral:
             pos = self.spiral_exploration(goal_data)
@@ -292,6 +302,8 @@ class CognitiveMonkey(EvolvedBrain):
 
     def __init__(self, agent, world, search_agents, carrier_agents):
         super(CognitiveMonkey, self).__init__(agent, world)
+
+        self.over = False
 
         # Exploration map
         self.explore_map = np.zeros((world.height, world.width))
@@ -811,7 +823,6 @@ class CognitiveMonkey(EvolvedBrain):
 
         return False
 
-
     def assign_food(self, food_pos, food_quantity, bot):
 
         data    = self.bot_db[bot]
@@ -863,20 +874,21 @@ class CognitiveMonkey(EvolvedBrain):
                 pos = tuple(map(int, bot.agent.pos))
 
                 if goal_data["pos"] == pos:
-                    # print "Target munched!"
+
+                    # Consume food item
                     targets.popleft()
                     data["plan"] = deque([])
 
                     food_item = self.world.object_matrix[pos]
                     if food_item.quantity == 0:
-                        food_item.invisible = True #TODO
+                        food_item.invisible = True
 
                     if len(targets) > 0:
                         goal_type, goal_data = targets[0]
 
                         if goal_type == CognitiveMonkey.ReturnToBase:
-                            # print "Plan for returning to the base."
-                            # TODO: seek closest carrier as well
+
+                            # Check whether either the base or an unengaged carrier is closer
 
                             distance_to_carrier = Collisions.distance(bot.agent.pos, self.world.base.pos)
                             carrier = self.world.base
@@ -923,10 +935,11 @@ class CognitiveMonkey(EvolvedBrain):
                                 data["plan"].append((CognitiveMonkey.ReturnToBase, info))
 
             elif goal_type == CognitiveMonkey.ReturnToBase:
+
+                # Bot returned to the base successfully, update beliefs
                 if len(data["plan"]) == 0:
                     targets.popleft()
                     data["food_stored"] = 0
-                    # print "Return to base successfully."
 
         for food_pos in self.free_resources:
 
@@ -950,7 +963,6 @@ class CognitiveMonkey(EvolvedBrain):
 
                 # no more interested bots
                 if not best_choice:
-                    # print "No bot interested"
                     break
 
                 # print "Found interested bot: ", best_choice, distance
@@ -992,38 +1004,41 @@ class CognitiveMonkey(EvolvedBrain):
                         data["plan"] = deque([(CognitiveMonkey.ExploreGradient, pos) for pos in plan])
                         data["plan"].append((CognitiveMonkey.GatherResource, goal_data))
 
-                        # print data["plan"]
+    def redirect_to_base(self, bot):
 
-            # print "Targets", self.bot_db[bot]["targets"]
-            # print "Plan", self.bot_db[bot]["plan"]
-            # print
+        if bot.agent.pos == self.world.base.pos:
+            return
 
-    # def unload_resources(self, bot, collisions):
+        self.over = False
+        data = self.bot_db[bot]
 
-        # data = self.bot_db[bot]
-        # food_stored = data["food_stored"]
-        #
-        # if food_stored == 0:
-        #     return
-        #
-        # for agent in collisions[World.Agents]:
-        #     if isinstance(agent, CarrierAgent):
-        #         agent.food_stored += food_stored
-        #         data["food_stored"] = 0
-        #         print "Dumped food in da carrier."
-        #         return
-        #
-        # if collisions[World.Base]:
-        #     data["food_stored"] = 0
-        #     self.world.base.food_stored += food_stored
-        #     print "Dumped food in da base."
+        targets = data["targets"]
+
+        if len(targets) == 0 or targets[0] != CognitiveMonkey.ReturnToBase:
+            data["targets"] = deque([CognitiveMonkey.ReturnToBase, {"amount": 0}])
+            plan = self.compute_path(bot.agent.pos, self.world.base.pos)
+            data["plan"] = deque([(CognitiveMonkey.ExploreGradient, pos) for pos in plan])
+
+    def redirect_everyone_to_base(self):
+
+        self.over = True
+        for bot in self.search_agents:
+            self.redirect_to_base(bot)
+
+        for bot in self.carrier_agents:
+            self.redirect_to_base(bot)
 
     def compute_master_plan(self):
 
-        self.bumped_walls()
-        self.acquire_knowledge()
-        self.let_the_hunt_begin()
-        self.explore()
+        if self.world.total_resources == 0:
+            self.redirect_everyone_to_base()
+
+        else:
+            self.bumped_walls()
+            self.acquire_knowledge()
+            self.let_the_hunt_begin()
+            self.explore()
+
         self.assign_command()
 
     def think(self):

@@ -72,7 +72,7 @@ class AugumentedLogic(Logic):
             self.all_brains.add(ai)
 
     def is_over(self):
-        return self.maestro.world.total_resources == 0
+        return self.maestro.over
 
     def think(self):
 

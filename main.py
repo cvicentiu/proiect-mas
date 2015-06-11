@@ -9,14 +9,14 @@ random.seed(42)
 
 class WorldGenerator():
 
-    WORLD_WIDTH  = 400
-    WORLD_HEIGHT = 400
+    WORLD_WIDTH  = 600
+    WORLD_HEIGHT = 600
 
-    BASE_X = 200
-    BASE_Y = 200
+    BASE_X = WORLD_HEIGHT / 2
+    BASE_Y = WORLD_WIDTH / 2
 
-    NUM_REACTIVE_AGENTS = 10
-    NUM_COGNITIVE_AGENTS = 1
+    NUM_REACTIVE_AGENTS = 30
+    NUM_COGNITIVE_AGENTS = 30
 
     NUM_FOOD_CLUSTERS          = 10
     NUM_FOOD_UNITS_PER_CLUSTER = 20
@@ -103,7 +103,7 @@ class WorldGenerator():
 
     @staticmethod
     def cognitive_test_0():
-        world = WorldGenerator.generate_world(num_cognitive_agents=5, num_reactive_agents=5)
+        world = WorldGenerator.generate_world(num_cognitive_agents=5, num_reactive_agents=20)
         thinker = AugumentedLogic(world)
         Screen(world, thinker)
 
