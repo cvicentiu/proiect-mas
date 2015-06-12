@@ -9,8 +9,8 @@ random.seed(42)
 
 class WorldGenerator():
 
-    WORLD_WIDTH  = 600
-    WORLD_HEIGHT = 600
+    WORLD_WIDTH  = 400
+    WORLD_HEIGHT = 400
 
     BASE_X = WORLD_HEIGHT / 2
     BASE_Y = WORLD_WIDTH / 2
@@ -103,7 +103,7 @@ class WorldGenerator():
 
     @staticmethod
     def cognitive_test_0():
-        world = WorldGenerator.generate_world(num_cognitive_agents=5, num_reactive_agents=20)
+        world = WorldGenerator.generate_world(num_cognitive_agents=5, num_reactive_agents=10)
         thinker = AugumentedLogic(world)
         Screen(world, thinker)
 

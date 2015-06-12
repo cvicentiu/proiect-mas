@@ -658,6 +658,9 @@ class CognitiveMonkey(EvolvedBrain):
         data   = self.bot_db[bot]
         result = self.seek_available_tile(pos)
 
+        print data["targets"]
+        exit(0)
+
         if not result:
             pp("No tile left to explore!!")
             # exit(0)
@@ -680,15 +683,14 @@ class CognitiveMonkey(EvolvedBrain):
                 self.set_random_strategy(bot)
 
         goal_type, goal_data = targets[0]
+        pos = map(int, bot.agent.pos)
 
         if goal_type == EvolvedBrain.ExploreSpiral:
             data["plan"] = deque([(EvolvedBrain.ExploreSpiral, data)])
 
         elif goal_type == EvolvedBrain.ExploreGradient:
 
-            pos = map(int, bot.agent.pos)
-
-            if pos == goal_data:
+            if pos == goal_data or tuple(pos) == goal_data:
 
                 # print "Remove exploration target !!"
                 targets.popleft()
@@ -714,6 +716,8 @@ class CognitiveMonkey(EvolvedBrain):
                 plan = self.compute_path(pos, goal_data)
 
                 if len(plan) == 0:
+                    print "no way"
+                    print pos, goal_data
                     self.set_random_strategy(bot)
                 else:
                     plan = [(CognitiveMonkey.ExploreGradient, pos) for pos in plan]
@@ -915,7 +919,7 @@ class CognitiveMonkey(EvolvedBrain):
                                 if len(targets_carrier) > 0:
 
                                     t = targets_carrier[0]
-                                    pos_carrier = tuple(map(int, carrier.agent.pos))
+                                    pos_carrier = map(int, carrier.agent.pos)
                                     if t[0] == CognitiveMonkey.ExploreSpiral:
                                         targets_carrier.appendleft((CognitiveMonkey.ExploreGradient, pos_carrier))
 
@@ -938,6 +942,8 @@ class CognitiveMonkey(EvolvedBrain):
 
                 # Bot returned to the base successfully, update beliefs
                 if len(data["plan"]) == 0:
+
+
                     targets.popleft()
                     data["food_stored"] = 0
 
